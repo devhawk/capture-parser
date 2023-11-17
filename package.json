@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "tsx index.ts"
   },
   "keywords": [],
   "author": "",
@@ -12,7 +12,11 @@
   "devDependencies": {
     "@tsconfig/node20": "^20.1.2",
     "@types/node": "^20.9.0",
+    "@types/stream-json": "^1.7.6",
     "tsx": "^4.1.0",
     "typescript": "^5.2.2"
+  },
+  "dependencies": {
+    "stream-json": "^1.8.0"
   }
 }
