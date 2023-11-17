@@ -6,9 +6,11 @@ import FilterBase from 'stream-json/filters/FilterBase';
 
 const PATH = "/home/harry/scratch/node-pg-test/capture.json";
 
-interface Token {
-    readonly name: string;
-    readonly value: string | null | boolean | readonly Token[];
+type Token = { readonly name: string; readonly value: TokenValue; }
+type TokenValue = string | null | boolean | readonly Token[];
+
+function isArray(value: TokenValue):  value is readonly Token[] {
+    return Array.isArray(value);
 }
 
 class PGCollector extends Transform {
@@ -79,14 +81,19 @@ const pipeline = fs.createReadStream(PATH)
 
     ;
 
-type PGRecord = { 
-    type?: string; 
-    length?: number; 
-    frontend?: boolean; 
-    data: Token[]; 
+type PGToken = readonly [key: string, value: PGTokenValue]
+type PGTokenValue = string | boolean | null | readonly PGToken[]
+function mapToken(t: Token): PGToken {
+    if (isArray(t.value)) {
+        const value = t.value.map(mapToken);
+        return [t.name, value]
+    } else {
+        return [t.name, t.value]
+    }
 }
+    
 
-function convertPgRecord(data: Token[]): PGRecord {
+function convertPgRecord(data: Token[]) {
     const $type = data.find(t => t.name === 'type')?.value;
     const type = $type ? $type.toString() : undefined;
     const $length = data.find(t => t.name === 'length')?.value;
@@ -94,11 +101,13 @@ function convertPgRecord(data: Token[]): PGRecord {
     const $frontend = data.find(t => t.name === 'frontend')?.value;
     const frontend = $frontend ? !!$frontend : undefined;
 
-    data = data.filter(t => !["type", "length", "frontend"].includes(t.name))
-    return { type, frontend, length, data}    
+    const $data = data
+        .filter(t => !["type", "length", "frontend"].includes(t.name))
+        .map(mapToken)
+    return { type, frontend, length, data : $data}    
 }
 
-const records = new Array<PGRecord>();
+const records = new Array<any>()
 pipeline.on('data', (data: Token[]) => {
     records.push(convertPgRecord(data));
 });
