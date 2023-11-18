@@ -30,8 +30,8 @@ class PGCollector extends Transform {
     _transform(chunk: FilterBase.Token, encoding: BufferEncoding, callback: TransformCallback): void {
         switch (chunk.name) {
             case 'keyValue': {
-                const key = chunk.value!.toString().substring(6)
-                this.#keys.push(key)
+                const key = chunk.value as string;
+                this.#keys.push(key.startsWith('pgsql.') ? key.substring(6) : key)
                 break;
             }
             case "stringValue":
@@ -98,21 +98,30 @@ function mapToken(t: Token): PGToken {
 }
     
 
-function convertPgRecord(data: Token[]) {
+interface PGRecord {
+    type?: string;
+    frontend?: boolean;
+    length?: number;
+    data: PGToken[];
+}
+
+function convertPgRecord(data: Token[]): PGRecord {
     const $type = data.find(t => t.name === 'type')?.value;
     const type = $type ? $type.toString() : undefined;
     const $length = data.find(t => t.name === 'length')?.value;
     const length = $length ? +$length : undefined;
     const $frontend = data.find(t => t.name === 'frontend')?.value;
-    const frontend = $frontend ? !!$frontend : undefined;
+    const frontend = $frontend ? !!(+$frontend) : undefined;
 
     const $data = data
         .filter(t => !["type", "length", "frontend"].includes(t.name))
-        .map(mapToken)
+        .map(mapToken);
     return { type, frontend, length, data : $data}    
 }
 
-const records = new Array<any>()
+
+
+const records = new Array<PGRecord>()
 pipeline.on('data', (data: Token[]) => {
     records.push(convertPgRecord(data));
 });
