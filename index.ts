@@ -1,10 +1,15 @@
 import fs from 'node:fs'
+import fsp from 'node:fs/promises'
+import path from 'node:path';
 import { parser } from 'stream-json';
 import { pick } from 'stream-json/filters/Pick';
 import { Transform, TransformCallback } from 'stream';
 import FilterBase from 'stream-json/filters/FilterBase';
 
-const PATH = "/home/harry/scratch/node-pg-test/capture.json";
+const PATH = process.argv[2];
+if (!PATH) {
+    throw new Error("path not specified")
+}
 
 type Token = { readonly name: string; readonly value: TokenValue; }
 type TokenValue = string | null | boolean | readonly Token[];
@@ -112,6 +117,8 @@ pipeline.on('data', (data: Token[]) => {
     records.push(convertPgRecord(data));
 });
 pipeline.on('end', () => {
-    console.log(JSON.stringify(records, null, 4))
+    const { dir, ext, name } = path.parse(PATH);
+    const newPath = path.format({ dir, ext, name: `${name}.pgsql`})
+    fsp.writeFile(newPath, JSON.stringify(records, null, 4)).catch(console.error);
 });
 
